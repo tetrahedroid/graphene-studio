@@ -1,0 +1,19 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pairlist = "*"
+numpy = "*"
+yaplotlib = "*"
+matplotlib = "*"
+cycless = "*"
+networkx = "*"
+
+[dev-packages]
+ipykernel = "*"
+sympy = "*"
+
+[requires]
+python_version = "3.11"
