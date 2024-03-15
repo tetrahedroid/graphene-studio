@@ -6,7 +6,7 @@ import numpy as np
 import pairlist as pl
 from cycless import cycles, simplex
 
-from graphenator import firstshell
+from graphenator.pack import firstshell
 
 
 def to_graph(x, cell, bondlen=1.2):
@@ -55,7 +55,7 @@ def fix_graph(x, cell):
 
     g = to_graph(x, cell, rpeak * 1.33)
 
-    logger.info(f"{cycle_hist(g)} Cycles")
+    logger.info(f"{cycle_hist(g)} Cycles in the packing")
 
     newedges = []
     for cycle in cycles.cycles_iter(g, maxsize=6):

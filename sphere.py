@@ -2,8 +2,8 @@ from logging import INFO, basicConfig, getLogger, DEBUG
 
 import numpy as np
 
-from graphenator.graphenate import graphenate
-from graphenator import snapshot
+from graphenator.pack import graphenate
+from graphenator import draw_yaplot
 
 
 def surface(x, cell, R):
@@ -23,15 +23,18 @@ cell = np.diag([L, L, L])
 R = 2
 
 with open(f"sphere32.yap", "w") as file:
+    count = 100
     for x, cell, g in graphenate(
         Npoly,
         lambda x, cell: surface(x, cell, R),
         gradient,
         cell,
-        iter=1000,
         cost=1250,  # 250,
         dt=0.05,  # 0.005
         T=0.1,
         repul=4,
     ):
-        file.write(snapshot(x, cell, g))
+        file.write(draw_yaplot(x, cell, g))
+        count -= 1
+        if count == 0:
+            break

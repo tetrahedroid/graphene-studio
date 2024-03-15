@@ -3,23 +3,11 @@ import pairlist as pl
 import yaplotlib as yap
 from cycless import cycles
 from logging import getLogger
+import graphenator.pack as pack
+import graphenator.graph as graph
 
 
-def firstshell(x, cell, rc=None):
-    if rc is None:
-        rc = cell[0, 0] / len(x) ** (1 / 3) * 3
-
-    ds = []
-    for _, _, d in pl.pairs_iter(x, rc, cell, fractional=False):
-        ds.append(d)
-    H = np.histogram(ds, bins=30)
-    for i in range(len(H[0]) - 1):
-        if H[0][i] > H[0][i + 1]:
-            break
-    return (H[1][i] + H[1][i + 1]) / 2
-
-
-def snapshot(x, cell, g):
+def draw_yaplot(x, cell, g):
 
     logger = getLogger()
 
@@ -53,6 +41,45 @@ def snapshot(x, cell, g):
         frame += yap.Polygon(d)
 
     frame += yap.NewPage()
-    logger.info(f"{hist} Cycles")
+    logger.info(f"{hist} Cycles in the graph")
 
     return frame
+
+
+def graphenate(
+    Natom: int,
+    surface,
+    gradient,
+    cell,
+    T=0.5,
+    dt=0.005,
+    cost=250,
+    repul=4,
+) -> np.ndarray:
+
+    logger = getLogger()
+    # make base trianglated surface
+    for x in pack.triangulate(
+        Natom,
+        surface,
+        gradient,
+        cell,
+        dt=dt,
+        T=T,
+        cost=cost,
+        repul=repul,
+    ):
+        # すべて三角格子になるように辺を追加する。
+        x = pack.quench(x, cell, surface, gradient, repul=repul, cost=cost)
+        g_fix = graph.fix_graph(x, cell)
+
+        if g_fix is not None:
+            # analyze the triangular adjacency and make the adjacency graph
+            triangle_positions, g_adjacency = graph.dual(x, cell, g_fix)
+            triangle_positions = graph.quench(triangle_positions, cell, g_adjacency)
+            yield triangle_positions, cell, g_adjacency
+
+
+def is_cubic_cell(cell):
+    Lx, Ly, Lz = cell[0, 0], cell[1, 1], cell[2, 2]
+    return Lx == Ly == Lz and np.count_nonzero(cell - np.diag(np.diagonal(cell))) == 0

@@ -10,9 +10,7 @@ def surface(x, cell, A):
 
     L = cell[0, 0]
     rx, ry, rz = (2 * np.pi * x / L).T
-    return (
-        np.sin(rx) * np.cos(ry) + np.sin(ry) * np.cos(rz) + np.sin(rz) * np.cos(rx) + A
-    )
+    return np.cos(rx) + np.cos(ry) + np.cos(rz) + A
 
 
 def gradient(x, cell):
@@ -20,10 +18,11 @@ def gradient(x, cell):
 
     L = cell[0, 0]
     rx, ry, rz = (2 * np.pi * x / L).T
+
     res = (
-        (-np.sin(rx) * np.sin(rz) + np.cos(rx) * np.cos(ry)) * 2 * np.pi / L,
-        (-np.sin(rx) * np.sin(ry) + np.cos(ry) * np.cos(rz)) * 2 * np.pi / L,
-        (-np.sin(ry) * np.sin(rz) + np.cos(rx) * np.cos(rz)) * 2 * np.pi / L,
+        -np.sin(rx) * 2 * np.pi / L,
+        -np.sin(ry) * 2 * np.pi / L,
+        -np.sin(rz) * 2 * np.pi / L,
     )
     return np.array(res).T
 
@@ -42,7 +41,7 @@ L = Npoly**0.5 / Lmagic
 cell = np.diag([L, L, L])
 eccentricity = 0.5  # eccentricity of the gyroid
 
-with open(f"gyroid.yap", "w") as file:
+with open(f"psurface.yap", "w") as file:
     count = 100
     for x, cell, g in graphenate(
         Npoly,

@@ -1,6 +1,5 @@
 import itertools as it
 from logging import getLogger
-import time
 
 import networkx as nx
 import numpy as np
@@ -8,8 +7,19 @@ import pairlist as pl
 import yaplotlib as yap
 from cycless import cycles, simplex
 
-import graphenator.graph as graph
-from graphenator import firstshell
+
+def firstshell(x, cell, rc=None):
+    if rc is None:
+        rc = cell[0, 0] / len(x) ** (1 / 3) * 3
+
+    ds = []
+    for _, _, d in pl.pairs_iter(x, rc, cell, fractional=False):
+        ds.append(d)
+    H = np.histogram(ds, bins=30)
+    for i in range(len(H[0]) - 1):
+        if H[0][i] > H[0][i + 1]:
+            break
+    return (H[1][i] + H[1][i + 1]) / 2
 
 
 def snapshot(x, cell, bondlen=1.2, verbose=True):
@@ -136,7 +146,7 @@ def force(x, cell, surface, gradient, repul=2, a=4, cost=250, rc=5):
 
     # さらに、Gyroidの外場を加える。
     Ug = surface(x, cell)
-    fg = cost * gradient(x, cell) * Ug[:, np.newaxis]
+    fg = 2 * cost * gradient(x, cell) * Ug[:, np.newaxis]
     # Dg = 250  # force const
     F -= fg
     # logger.info(f"{np.sum(Ug**2) * Dg} PE(2)")
@@ -222,7 +232,7 @@ def onestep(x, v, cell, surface, gradient, dt, T=None, repul=4, cost=0):
 from scipy.optimize import fmin_cg
 
 
-def quenching(x, cell, surface, gradient, repul=4, cost=250):
+def quench(x, cell, surface, gradient, repul=4, cost=250):
     logger = getLogger()
 
     # conjugate gradient minimization
@@ -250,7 +260,6 @@ def triangulate(
     surface,
     gradient,
     cell,
-    iter=10000,
     cost=0,
     dt=0.001,
     T=0.5,
@@ -276,13 +285,15 @@ def triangulate(
     x += np.random.random(x.shape) * 0.01
 
     # まずquenchし、曲面上に点を載せる
-    x = quenching(x, cell, surface, gradient, repul=repul, cost=cost)
+    x = quench(x, cell, surface, gradient, repul=repul, cost=cost)
 
     yield x
 
+    v = np.zeros([Natom, 3])
+
     # # debug用: エネルギー保存則を確認する。
-    # 外場をなしにしても、EkとEp の振幅が倍違うように見える。
-    # # import matplotlib.pyplot as plt
+    # import matplotlib.pyplot as plt
+
     # Eps = []
     # Eks = []
     # for loop in range(1000):
@@ -301,49 +312,11 @@ def triangulate(
     # plt.show()
     # assert False
 
-    v = np.zeros([Natom, 3])
-
     logger.info("Tempering")
-    for loop in range(iter):
-        x, v, _, _ = onestep(
-            x, v, cell, surface, gradient, dt, T=T, cost=cost, repul=repul
-        )
+    while True:
+        for _ in range(10):
+            x, v, _, _ = onestep(
+                x, v, cell, surface, gradient, dt, T=T, cost=cost, repul=repul
+            )
 
-        if loop % 10 == 0:
-            yield x
-
-
-def graphenate(
-    Natom: int,
-    surface,
-    gradient,
-    cell,
-    T=0.5,
-    dt=0.005,
-    iter=10000,
-    cost=250,
-    repul=4,
-) -> np.ndarray:
-
-    logger = getLogger()
-    # make base trianglated surface
-    for x in triangulate(
-        Natom,
-        surface,
-        gradient,
-        cell,
-        dt=dt,
-        T=T,
-        iter=iter,
-        cost=cost,
-        repul=repul,
-    ):
-        # すべて三角格子になるように辺を追加する。
-        x = quenching(x, cell, surface, gradient, repul=repul, cost=cost)
-        g_fix = graph.fix_graph(x, cell)
-
-        if g_fix is not None:
-            # analyze the triangular adjacency and make the adjacency graph
-            triangle_positions, g_adjacency = graph.dual(x, cell, g_fix)
-            triangle_positions = graph.quench(triangle_positions, cell, g_adjacency)
-            yield triangle_positions, cell, g_adjacency
+        yield x
