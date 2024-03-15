@@ -8,7 +8,7 @@ import pairlist as pl
 import yaplotlib as yap
 from cycless import cycles, simplex
 
-import graphenator.dual as dual
+import graphenator.graph as graph
 from graphenator import firstshell
 
 
@@ -225,6 +225,7 @@ from scipy.optimize import fmin_cg
 def quenching(x, cell, surface, gradient, repul=4, cost=250):
     logger = getLogger()
 
+    # conjugate gradient minimization
     x = fmin_cg(
         lambda x: potential_energy(
             x.reshape(-1, 3), cell, surface, repul=repul, cost=cost, return_total=True
@@ -253,31 +254,31 @@ def triangulate(
     cost=0,
     dt=0.001,
     T=0.5,
-    file=None,
     repul=4,
 ) -> np.ndarray:
     logger = getLogger()
     # approx grid
     N3 = int(Natom ** (1 / 3)) + 1
+
+    # Nよりも大きい立方格子
     X, Y, Z = np.mgrid[0:N3, 0:N3, 0:N3] / N3 - 0.5
+
+    # 格子点の座標のリスト
     x = np.vstack((X.ravel(), Y.ravel(), Z.ravel())).T
+
+    # 乱数発生
     r = np.random.random(x.shape[0])
+
+    # シャッフルし、最初のNatomを抽出し、絶対座標に変換する
     x = x[np.argsort(r)][:Natom] @ cell
+
+    # 揺らぎを加えて対称性を崩す
     x += np.random.random(x.shape) * 0.01
 
-    v = np.zeros([Natom, 3])
-
-    # 初期配置がひどいはずなので、最初だけQuenchする
-    # Quenchを適度に行う良い方針はないのか。
-
-    # conjugate gradient minimization
-    now = time.time()
+    # まずquenchし、曲面上に点を載せる
     x = quenching(x, cell, surface, gradient, repul=repul, cost=cost)
-    logger.info(f"CG quench {time.time()-now} sec")
 
-    if file is not None:
-        rpeak = firstshell(x, cell)
-        file.write(snapshot(x, cell, rpeak * 1.35))
+    yield x
 
     # # debug用: エネルギー保存則を確認する。
     # 外場をなしにしても、EkとEp の振幅が倍違うように見える。
@@ -300,36 +301,16 @@ def triangulate(
     # plt.show()
     # assert False
 
+    v = np.zeros([Natom, 3])
+
     logger.info("Tempering")
     for loop in range(iter):
-        x, v, Ek, Ep = onestep(
+        x, v, _, _ = onestep(
             x, v, cell, surface, gradient, dt, T=T, cost=cost, repul=repul
         )
 
-        rpeak = firstshell(x, cell)
-
         if loop % 10 == 0:
-            logger.info((loop, Ek, Ep))
-            if file is not None:
-                # xx = x.copy()
-                # xx = quenching(xx, cell, surface, gradient, repul=repul, cost=cost)
-                file.write(snapshot(x, cell, rpeak * 1.35))
-
-    # 最後にQuench
-    logger.info("Quench again")
-    now = time.time()
-    x = quenching(x, cell, surface, gradient, repul=repul, cost=cost)
-    logger.info(f"CG quench {time.time()-now} sec")
-
-    # with open(f"T{T}-2.yap", "a") as f:
-    #     f.write(snapshot(x, cell, rpeak * 1.35))
-
-    # with open(f"T{T}-last.x", "w") as f:
-    #     print(L, L, L, file=f)
-    #     print(N, file=f)
-    #     for pos in x:
-    #         print(*pos, file=f)
-    return x
+            yield x
 
 
 def graphenate(
@@ -341,12 +322,12 @@ def graphenate(
     dt=0.005,
     iter=10000,
     cost=250,
-    progress=None,
     repul=4,
 ) -> np.ndarray:
 
+    logger = getLogger()
     # make base trianglated surface
-    x = triangulate(
+    for x in triangulate(
         Natom,
         surface,
         gradient,
@@ -355,22 +336,14 @@ def graphenate(
         T=T,
         iter=iter,
         cost=cost,
-        file=progress,
         repul=repul,
-    )
-    g_fix = dual.fix_graph(x, cell)
+    ):
+        # すべて三角格子になるように辺を追加する。
+        x = quenching(x, cell, surface, gradient, repul=repul, cost=cost)
+        g_fix = graph.fix_graph(x, cell)
 
-    # analyze the triangular adjacency and make the adjacency graph
-    triangle_positions, g_adjacency = dual.dualize(x, cell, g_fix)
-    triangle_positions = dual.quench(
-        triangle_positions, cell, g_adjacency, file=progress
-    )
-
-
-# with open("T0.5-last.x") as f:
-#     lines = f.readlines()
-#     cell = np.diag([float(x) for x in lines[0].split()])
-#     x = []
-#     for line in lines[2:]:
-#         x.append([float(x) for x in line.split()])
-#     x = np.array(x)
+        if g_fix is not None:
+            # analyze the triangular adjacency and make the adjacency graph
+            triangle_positions, g_adjacency = graph.dual(x, cell, g_fix)
+            triangle_positions = graph.quench(triangle_positions, cell, g_adjacency)
+            yield triangle_positions, cell, g_adjacency

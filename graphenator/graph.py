@@ -4,7 +4,6 @@ from logging import getLogger
 import networkx as nx
 import numpy as np
 import pairlist as pl
-import yaplotlib as yap
 from cycless import cycles, simplex
 
 from graphenator import firstshell
@@ -12,7 +11,7 @@ from graphenator import firstshell
 
 def to_graph(x, cell, bondlen=1.2):
 
-    logger = getLogger()
+    # logger = getLogger()
 
     pairs = {(i, j): d for i, j, d in pl.pairs_iter(x, bondlen, cell, fractional=False)}
 
@@ -56,11 +55,13 @@ def fix_graph(x, cell):
 
     g = to_graph(x, cell, rpeak * 1.33)
 
-    logger.info(cycle_hist(g))
+    logger.info(f"{cycle_hist(g)} Cycles")
 
     newedges = []
     for cycle in cycles.cycles_iter(g, maxsize=6):
-        assert len(cycle) in (3, 4)
+        if len(cycle) not in (3, 4):
+            # 大穴がある場合はあきらめる
+            return None
 
         if len(cycle) == 4:
             # connect the shorter diagonal
@@ -77,11 +78,10 @@ def fix_graph(x, cell):
     for edge in newedges:
         g.add_edge(*edge)
 
-    print(cycle_hist(g))
     return g
 
 
-def dualize(x, cell, g):
+def dual(x, cell, g):
     celli = np.linalg.inv(cell)
     tripos = []
     edgeowners = dict()
@@ -127,49 +127,10 @@ def force(x, cell, g):
     return F, E
 
 
-def snapshot(x, cell, g):
-
-    # logger = getLogger()
-
-    celli = np.linalg.inv(cell)
-
-    frame = ""
-
-    frame += yap.SetPalette(7, 128, 255, 128)
-    frame += yap.Layer(1)
-    frame += yap.Color(0)
-    c = (cell[0] + cell[1] + cell[2]) / 2
-    frame += yap.Line(cell[0, :] - c, -c)
-    frame += yap.Line(cell[1, :] - c, -c)
-    frame += yap.Line(cell[2, :] - c, -c)
-
-    frame += yap.Size(0.2)
-    for pos in x:
-        frame += yap.Circle(pos)
-
-    for cycle in cycles.cycles_iter(g, maxsize=8):
-        cycle = list(cycle)
-        d = x[cycle] - x[cycle[0]]
-        d -= np.floor(d @ celli + 0.5) @ cell
-        c = np.mean(d, axis=0) + x[cycle[0]]
-        dc = np.floor(c @ celli + 0.5) @ cell
-        d = d + x[cycle[0]] - dc
-        frame += yap.Layer(len(cycle))
-        frame += yap.Color(len(cycle))
-        frame += yap.Polygon(d)
-
-    frame += yap.NewPage()
-
-    return frame
-
-
-def quench(x, cell, g: nx.Graph, dt=0.01, file=None):
+def quench(x, cell, g: nx.Graph, dt=0.01):
     logger = getLogger()
     for loop in range(100):
         F, E = force(x, cell, g)
-        logger.info(E)
+        # logger.info(E)
         x += F * dt
-        rpeak = firstshell(x, cell)
-        if file is not None:
-            file.write(snapshot(x, cell, g))
     return x

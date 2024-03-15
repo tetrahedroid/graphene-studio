@@ -3,6 +3,7 @@ from logging import INFO, basicConfig, getLogger, DEBUG
 import numpy as np
 
 from graphenator.graphenate import graphenate
+from graphenator import snapshot
 
 
 def surface(x, cell, A):
@@ -35,7 +36,10 @@ def gradient(x, cell):
 
 
 logger = getLogger()
-basicConfig(level=INFO)
+basicConfig(
+    level=INFO,
+    format="[%(asctime)s] [%(process)d] [%(pathname)s:%(lineno)s] [%(levelname)s] %(message)s",
+)
 # basicConfig(level=DEBUG)
 
 Npoly = 192
@@ -43,18 +47,18 @@ Lmagic = 1.0  # 粒子数とサイズの関係
 # この計算は自動化せねば。
 L = Npoly**0.5 / Lmagic
 cell = np.diag([L, L, L])
-A = 0.5  # eccentricity of the gyroid
+eccentricity = 0.5  # eccentricity of the gyroid
 
 with open(f"gyroid.yap", "w") as file:
-    x = graphenate(
+    for x, cell, g in graphenate(
         Npoly,
-        lambda x, cell: surface(x, cell, A),
+        lambda x, cell: surface(x, cell, eccentricity),
         gradient,
         cell,
         iter=1000,
         cost=1250,  # 250,
         dt=0.05,  # 0.005
         T=0.1,
-        progress=file,
         repul=4,
-    )
+    ):
+        file.write(snapshot(x, cell, g))
