@@ -8,8 +8,11 @@ pairlist = "*"
 numpy = "*"
 yaplotlib = "*"
 matplotlib = "*"
-cycless = "*"
 networkx = "*"
+cycless = "*"
+jupyter = "*"
+scipy = "*"
+isort = "*"
 
 [dev-packages]
 ipykernel = "*"
