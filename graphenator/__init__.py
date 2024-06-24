@@ -24,7 +24,7 @@ def draw_yaplot(x, cell, g):
     frame += yap.Line(cell[1, :] - c, -c)
     frame += yap.Line(cell[2, :] - c, -c)
 
-    frame += yap.Size(0.2)
+    frame += yap.Size(0.05)
     for pos in x:
         frame += yap.Circle(pos)
 
@@ -45,40 +45,6 @@ def draw_yaplot(x, cell, g):
     logger.info(f"{hist} Cycles in the graph")
 
     return frame
-
-
-def graphenate0(
-    Natom: int,
-    surface,
-    gradient,
-    cell,
-    T=0.5,
-    dt=0.005,
-    cost=250,
-    repul=4,
-) -> np.ndarray:
-
-    logger = getLogger()
-    # make base trianglated surface
-    for x in pack.triangulate0(
-        Natom,
-        surface,
-        gradient,
-        cell,
-        dt=dt,
-        T=T,
-        cost=cost,
-        repul=repul,
-    ):
-        # すべて三角格子になるように辺を追加する。
-        x = pack.quench(x, cell, surface, gradient, repul=repul, cost=cost)
-        g_fix = graph.fix_graph(x, cell)
-
-        if g_fix is not None:
-            # analyze the triangular adjacency and make the adjacency graph
-            triangle_positions, g_adjacency = graph.dual(x, cell, g_fix)
-            triangle_positions = graph.quench(triangle_positions, cell, g_adjacency)
-            yield triangle_positions, cell, g_adjacency
 
 
 def graphenate(
@@ -111,8 +77,3 @@ def graphenate(
             triangle_positions = graph.quench(triangle_positions, cell, g_adjacency)
             logger.info("Done.")
             yield triangle_positions, cell, g_adjacency
-
-
-# def is_cubic_cell(cell):
-#     Lx, Ly, Lz = cell[0, 0], cell[1, 1], cell[2, 2]
-#     return Lx == Ly == Lz and np.count_nonzero(cell - np.diag(np.diagonal(cell))) == 0
