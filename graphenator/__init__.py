@@ -1,5 +1,6 @@
 import numpy as np
-import pairlist as pl
+
+# import pairlist as pl
 import yaplotlib as yap
 from cycless import cycles
 from logging import getLogger
@@ -46,7 +47,7 @@ def draw_yaplot(x, cell, g):
     return frame
 
 
-def graphenate(
+def graphenate0(
     Natom: int,
     surface,
     gradient,
@@ -59,7 +60,7 @@ def graphenate(
 
     logger = getLogger()
     # make base trianglated surface
-    for x in pack.triangulate(
+    for x in pack.triangulate0(
         Natom,
         surface,
         gradient,
@@ -80,6 +81,38 @@ def graphenate(
             yield triangle_positions, cell, g_adjacency
 
 
-def is_cubic_cell(cell):
-    Lx, Ly, Lz = cell[0, 0], cell[1, 1], cell[2, 2]
-    return Lx == Ly == Lz and np.count_nonzero(cell - np.diag(np.diagonal(cell))) == 0
+def graphenate(
+    Natom: int,
+    cell,
+    f,
+    df,
+    T=0.5,
+    dt=0.005,
+) -> np.ndarray:
+
+    logger = getLogger()
+    # make base trianglated surface
+    for x in pack.triangulate(
+        Natom,
+        cell,
+        f,
+        df,
+        dt=dt,
+        T=T,
+    ):
+        logger.info("packing candid.")
+        # すべて三角格子になるように辺を追加する。
+        g_fix = graph.fix_graph(x, cell)
+
+        if g_fix is not None:
+            # analyze the triangular adjacency and make the adjacency graph
+            triangle_positions, g_adjacency = graph.dual(x, cell, g_fix)
+            logger.info("Quenching the graph...")
+            triangle_positions = graph.quench(triangle_positions, cell, g_adjacency)
+            logger.info("Done.")
+            yield triangle_positions, cell, g_adjacency
+
+
+# def is_cubic_cell(cell):
+#     Lx, Ly, Lz = cell[0, 0], cell[1, 1], cell[2, 2]
+#     return Lx == Ly == Lz and np.count_nonzero(cell - np.diag(np.diagonal(cell))) == 0

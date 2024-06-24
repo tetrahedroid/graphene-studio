@@ -17,7 +17,7 @@ def to_graph(x, cell, bondlen=1.2):
 
     g = nx.Graph(list(pairs))
 
-    remove = []
+    remove = set()
     for tetra in simplex.tetrahedra_iter(g):
         subset = {}
         for i, j in it.combinations(tetra, 2):
@@ -32,7 +32,7 @@ def to_graph(x, cell, bondlen=1.2):
         # print(values)
         # print(longest, subset[keys[longest]])
 
-        remove.append(keys[longest])
+        remove.add(keys[longest])
 
     for edge in remove:
         g.remove_edge(*edge)

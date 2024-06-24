@@ -7,6 +7,8 @@ import pairlist as pl
 import yaplotlib as yap
 from cycless import cycles, simplex
 
+from graphenator.quench import quench_particles
+
 
 def firstshell(x, cell, rc=None):
     if rc is None:
@@ -46,7 +48,7 @@ def snapshot(x, cell, bondlen=1.2, verbose=True):
     frame += yap.Line(cell[1, :] - c, -c)
     frame += yap.Line(cell[2, :] - c, -c)
 
-    frame += yap.Size(0.2)
+    frame += yap.Size(0.05)
     for pos in x:
         frame += yap.Circle(pos)
     nnei = [0] * len(x)
@@ -198,7 +200,7 @@ def potential_energy(
     return Ei, Ex
 
 
-def onestep(x, v, cell, surface, gradient, dt, T=None, repul=4, cost=0):
+def onestep0(x, v, cell, surface, gradient, dt, T=None, repul=4, cost=0):
     celli = np.linalg.inv(cell)
     Natom = x.shape[0]
 
@@ -229,6 +231,37 @@ def onestep(x, v, cell, surface, gradient, dt, T=None, repul=4, cost=0):
     return x, v, ek, (Ei + Eg) / Natom
 
 
+def onestep(x, v, cell, f, df, dt, T=None, repul=4, cost=0):
+    celli = np.linalg.inv(cell)
+    Natom = x.shape[0]
+
+    # 座標を半分だけ進める
+    x += v * dt / 2
+    x -= np.floor(x @ celli + 0.5) @ cell
+
+    # 力を計算する
+    F = -df(x @ celli, cell)
+
+    # 速度を進める
+    v += F * dt
+
+    # energy monitor
+    ek = np.sum(v**2) / 2 / Natom
+
+    # T controller
+    if T is not None:
+        if ek > T:
+            v *= 0.95
+        else:
+            v *= 1.05
+
+    # 座標を半分だけ進める
+    x += v * dt / 2
+
+    ep = f(x @ celli, cell) / Natom
+    return x, v, ek, ep
+
+
 from scipy.optimize import fmin_cg
 
 
@@ -251,19 +284,8 @@ def quench(x, cell, surface, gradient, repul=4, cost=250):
     return x
 
 
-# 最適なものを1つだけ返そうと思うから苦労する。
-# 次々にyieldして取捨選択はユーザーにまかせよう。
-
-
-def triangulate(
+def random_box(
     Natom: int,
-    surface,
-    gradient,
-    cell,
-    cost=0,
-    dt=0.001,
-    T=0.5,
-    repul=4,
 ) -> np.ndarray:
     logger = getLogger()
     # approx grid
@@ -279,10 +301,46 @@ def triangulate(
     r = np.random.random(x.shape[0])
 
     # シャッフルし、最初のNatomを抽出し、絶対座標に変換する
-    x = x[np.argsort(r)][:Natom] @ cell
-
-    # 揺らぎを加えて対称性を崩す
+    x = x[np.argsort(r)][:Natom]
     x += np.random.random(x.shape) * 0.01
+
+    return x
+
+
+# 最適なものを1つだけ返そうと思うから苦労する。
+# 次々にyieldして取捨選択はユーザーにまかせよう。
+
+
+def triangulate0(
+    Natom: int,
+    surface,
+    gradient,
+    cell,
+    cost=0,
+    dt=0.001,
+    T=0.5,
+    repul=4,
+) -> np.ndarray:
+    logger = getLogger()
+    # # approx grid
+    # N3 = int(Natom ** (1 / 3)) + 1
+
+    # # Nよりも大きい立方格子
+    # X, Y, Z = np.mgrid[0:N3, 0:N3, 0:N3] / N3 - 0.5
+
+    # # 格子点の座標のリスト
+    # x = np.vstack((X.ravel(), Y.ravel(), Z.ravel())).T
+
+    # # 乱数発生
+    # r = np.random.random(x.shape[0])
+
+    # # シャッフルし、最初のNatomを抽出し、絶対座標に変換する
+    # x = x[np.argsort(r)][:Natom] @ cell
+
+    # # # 揺らぎを加えて対称性を崩す
+    # # x += np.random.random(x.shape) * 0.01
+
+    x = random_box(Natom) @ cell
 
     # まずquenchし、曲面上に点を載せる
     x = quench(x, cell, surface, gradient, repul=repul, cost=cost)
@@ -315,8 +373,36 @@ def triangulate(
     logger.info("Tempering")
     while True:
         for _ in range(10):
-            x, v, _, _ = onestep(
+            x, v, _, _ = onestep0(
                 x, v, cell, surface, gradient, dt, T=T, cost=cost, repul=repul
             )
+
+        yield x
+
+
+def triangulate(
+    Natom: int,
+    cell,
+    f,
+    df,
+    dt=0.001,
+    T=0.5,
+) -> np.ndarray:
+    logger = getLogger()
+
+    r = random_box(Natom)
+
+    # まずquenchし、曲面上に点を載せる
+    r_quenched = quench_particles(r, cell, f, df)
+    x = r_quenched @ cell
+
+    yield x
+
+    v = np.zeros([Natom, 3])
+
+    logger.info("Tempering")
+    while True:
+        for _ in range(10):
+            x, v, _, _ = onestep(x, v, cell, f, df, dt, T=T)
 
         yield x
