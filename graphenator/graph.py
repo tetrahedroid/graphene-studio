@@ -1,5 +1,6 @@
 import itertools as it
 from logging import getLogger
+from typing import Tuple
 
 import networkx as nx
 import numpy as np
