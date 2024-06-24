@@ -9,7 +9,7 @@ def quench_particles(
     cell: np.ndarray[3],
     f: Callable[[np.ndarray, np.ndarray], float],
     df: Callable[[np.ndarray, np.ndarray], np.ndarray],
-):
+) -> np.ndarray:
     """周期境界セル内の粒子のエネルギー最小化。
 
     Args:

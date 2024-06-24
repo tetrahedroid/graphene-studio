@@ -1,15 +1,27 @@
-import numpy as np
+from logging import getLogger
+from typing import Callable
 
-# import pairlist as pl
+import numpy as np
+import networkx as nx
 import yaplotlib as yap
 from cycless import cycles
-from logging import getLogger
+
 import graphenator.pack as pack
 import graphenator.graph as graph
+from gromacs import write_gro
 
 
-def draw_yaplot(x, cell, g):
+def draw_yaplot(x: np.ndarray, cell: np.ndarray, g: nx.Graph) -> str:
+    """原子の座標とセルとグラフを読みこんでyaplotに変換する。
 
+    Args:
+        x (np.ndarray): atomic positions
+        cell (np.ndarray): cell matrix
+        g (nx.Graph): connectivity graph
+
+    Returns:
+        str: A frame of Yaplot
+    """
     logger = getLogger()
 
     celli = np.linalg.inv(cell)
@@ -42,21 +54,32 @@ def draw_yaplot(x, cell, g):
         frame += yap.Polygon(d)
 
     frame += yap.NewPage()
-    logger.info(f"{hist} Cycles in the graph")
+    logger.info(f"{hist[3:]} 3-8 cycles in the graph")
 
     return frame
 
 
 def graphenate(
     Natom: int,
-    cell,
-    f,
-    df,
-    T=0.5,
-    dt=0.005,
-) -> np.ndarray:
+    cell: np.ndarray,
+    f: Callable,
+    df: Callable,
+    T: float = 0.5,
+    dt: float = 0.005,
+):
+    """力場を読みこみ、曲面グラフェンを生成する。
 
-    logger = getLogger()
+    Args:
+        Natom (int): 原子数(斥力粒子の)
+        cell (np.ndarray): セル行列
+        f (Callable): 力場のポテンシャル
+        df (Callable): 力場のポテンシャルの勾配
+        T (float, optional): 温度. Defaults to 0.5.
+        dt (float, optional): 時間刻み. Defaults to 0.005.
+
+    Yields:
+        原子位置, セル行列, 結合グラフ: 炭素の配置と結合
+    """
     # make base trianglated surface
     for x in pack.triangulate(
         Natom,
@@ -66,14 +89,62 @@ def graphenate(
         dt=dt,
         T=T,
     ):
-        logger.info("packing candid.")
         # すべて三角格子になるように辺を追加する。
-        g_fix = graph.fix_graph(x, cell)
+        g_fix = graph.repair_graph(x, cell)
 
         if g_fix is not None:
             # analyze the triangular adjacency and make the adjacency graph
             triangle_positions, g_adjacency = graph.dual(x, cell, g_fix)
-            logger.info("Quenching the graph...")
             triangle_positions = graph.quench(triangle_positions, cell, g_adjacency)
-            logger.info("Done.")
             yield triangle_positions, cell, g_adjacency
+
+
+def dump_gro(x, cell, g, gro):
+
+    # セルの逆行列
+    celli = np.linalg.inv(cell)
+
+    # セル相対座標
+    r = x @ celli
+
+    # 0-1範囲にする。
+    r -= np.floor(r)
+
+    # 絶対座標もそれにあわせる。
+    x = r @ cell
+
+    # 1. 辺の平均長を調べ、それがグラフェンのC-C結合長に一致するように構造をスケールする。
+    L = []
+    for i, j in g.edges():
+        d = r[i] - r[j]
+        d -= np.floor(d + 0.5)
+        d = d @ cell
+        L.append((d @ d) ** 0.5)
+
+    Lavg = np.mean(L)
+
+    CC = 0.143 * 0.98  # nm; すこし短かくしておく。
+
+    x_scaled = x * CC / Lavg
+    cell_scaled = cell * CC / Lavg
+
+    # 原子の座標を準備する。
+
+    Natom = x_scaled.shape[0]
+    frame = {
+        "resi_id": np.array([999 for i in range(Natom)]),
+        "residue": np.array(["GRPH" for i in range(Natom)]),
+        "atom": np.array(["C" for i in range(Natom)]),
+        "atom_id": np.array([999 for i in range(Natom)]),
+        "position": x_scaled,
+        "cell": cell_scaled,
+    }
+
+    # 環を数える
+
+    hist = [0] * 9
+    for cycle in cycles.cycles_iter(g, maxsize=8):
+        cycle = list(cycle)
+        hist[len(cycle)] += 1
+
+    write_gro(frame, gro, f"{hist[3:]} 3-8 cycles in the graph")

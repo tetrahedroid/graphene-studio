@@ -22,6 +22,106 @@ class SurfaceFunc:
         return 2 * self.gradient(r) * Ug[:, np.newaxis]
 
 
+class Diamond(SurfaceFunc):
+    def __init__(self, eccentricity=0.0):
+        self.ecc = eccentricity
+
+    def surface(self, r):
+        rx, ry, rz = (2 * np.pi * r).T
+        return (
+            np.sin(rx) * np.sin(ry) * np.sin(rz)
+            + np.cos(rx) * np.cos(ry) * np.sin(rz)
+            + np.cos(rx) * np.sin(ry) * np.cos(rz)
+            + np.sin(rx) * np.cos(ry) * np.cos(rz)
+            + self.ecc
+        )
+
+    def gradient(self, r):
+        rx, ry, rz = (2 * np.pi * r).T
+
+        res = (
+            (
+                -np.sin(rx) * np.sin(ry) * np.cos(rz)
+                - np.sin(rx) * np.cos(ry) * np.sin(rz)
+                + np.cos(rx) * np.sin(ry) * np.sin(rz)
+                + np.cos(rx) * np.cos(ry) * np.cos(rz)
+            )
+            * 2
+            * np.pi,
+            (
+                np.sin(rx) * np.cos(ry) * np.sin(rz)
+                - np.cos(rx) * np.sin(ry) * np.sin(rz)
+                + np.cos(rx) * np.cos(ry) * np.cos(rz)
+                - np.sin(rx) * np.sin(ry) * np.cos(rz)
+            )
+            * 2
+            * np.pi,
+            (
+                np.sin(rx) * np.sin(ry) * np.cos(rz)
+                + np.cos(rx) * np.cos(ry) * np.cos(rz)
+                - np.cos(rx) * np.sin(ry) * np.sin(rz)
+                - np.sin(rx) * np.cos(ry) * np.sin(rz)
+            )
+            * 2
+            * np.pi,
+        )
+        return np.array(res).T
+
+
+class Gyroid(SurfaceFunc):
+    def __init__(self, eccentricity=0.0):
+        self.ecc = eccentricity
+
+    def surface(self, r):
+        rx, ry, rz = (2 * np.pi * r).T
+        return (
+            np.sin(rx) * np.cos(ry)
+            + np.sin(ry) * np.cos(rz)
+            + np.sin(rz) * np.cos(rx)
+            + self.ecc
+        )
+
+    def gradient(self, r):
+        rx, ry, rz = (2 * np.pi * r).T
+        res = (
+            (-np.sin(rx) * np.sin(rz) + np.cos(rx) * np.cos(ry)) * 2 * np.pi,
+            (-np.sin(rx) * np.sin(ry) + np.cos(ry) * np.cos(rz)) * 2 * np.pi,
+            (-np.sin(ry) * np.sin(rz) + np.cos(rx) * np.cos(rz)) * 2 * np.pi,
+        )
+        return np.array(res).T
+
+
+class PSurface(SurfaceFunc):
+    def __init__(self, eccentricity=0.0):
+        self.ecc = eccentricity
+
+    def surface(self, r):
+        rx, ry, rz = (2 * np.pi * r).T
+        return np.cos(rx) + np.cos(ry) + np.cos(rz) + self.ecc
+
+    def gradient(self, r):
+        rx, ry, rz = (2 * np.pi * r).T
+
+        res = (
+            -np.sin(rx) * 2 * np.pi,
+            -np.sin(ry) * 2 * np.pi,
+            -np.sin(rz) * 2 * np.pi,
+        )
+        return np.array(res).T
+
+
+class Sphere(SurfaceFunc):
+    def __init__(self, radius=0.0):
+        self.R = radius
+        assert 0 < radius < 0.5
+
+    def surface(self, x):
+        return np.sum(x**2, axis=1) - self.R**2
+
+    def gradient(self, x):
+        return 2 * x
+
+
 @dataclass
 class Ticks:
     min: float
@@ -125,103 +225,3 @@ class GridSurfaceFunc(SurfaceFunc):
         ) / self.grid.zticks.binw
 
         return np.array([gradx, grady, gradz]).T
-
-
-class Diamond(SurfaceFunc):
-    def __init__(self, eccentricity=0.0):
-        self.ecc = eccentricity
-
-    def surface(self, r):
-        rx, ry, rz = (2 * np.pi * r).T
-        return (
-            np.sin(rx) * np.sin(ry) * np.sin(rz)
-            + np.cos(rx) * np.cos(ry) * np.sin(rz)
-            + np.cos(rx) * np.sin(ry) * np.cos(rz)
-            + np.sin(rx) * np.cos(ry) * np.cos(rz)
-            + self.ecc
-        )
-
-    def gradient(self, r):
-        rx, ry, rz = (2 * np.pi * r).T
-
-        res = (
-            (
-                -np.sin(rx) * np.sin(ry) * np.cos(rz)
-                - np.sin(rx) * np.cos(ry) * np.sin(rz)
-                + np.cos(rx) * np.sin(ry) * np.sin(rz)
-                + np.cos(rx) * np.cos(ry) * np.cos(rz)
-            )
-            * 2
-            * np.pi,
-            (
-                np.sin(rx) * np.cos(ry) * np.sin(rz)
-                - np.cos(rx) * np.sin(ry) * np.sin(rz)
-                + np.cos(rx) * np.cos(ry) * np.cos(rz)
-                - np.sin(rx) * np.sin(ry) * np.cos(rz)
-            )
-            * 2
-            * np.pi,
-            (
-                np.sin(rx) * np.sin(ry) * np.cos(rz)
-                + np.cos(rx) * np.cos(ry) * np.cos(rz)
-                - np.cos(rx) * np.sin(ry) * np.sin(rz)
-                - np.sin(rx) * np.cos(ry) * np.sin(rz)
-            )
-            * 2
-            * np.pi,
-        )
-        return np.array(res).T
-
-
-class Gyroid(SurfaceFunc):
-    def __init__(self, eccentricity=0.0):
-        self.ecc = eccentricity
-
-    def surface(self, r):
-        rx, ry, rz = (2 * np.pi * r).T
-        return (
-            np.sin(rx) * np.cos(ry)
-            + np.sin(ry) * np.cos(rz)
-            + np.sin(rz) * np.cos(rx)
-            + self.ecc
-        )
-
-    def gradient(self, r):
-        rx, ry, rz = (2 * np.pi * r).T
-        res = (
-            (-np.sin(rx) * np.sin(rz) + np.cos(rx) * np.cos(ry)) * 2 * np.pi,
-            (-np.sin(rx) * np.sin(ry) + np.cos(ry) * np.cos(rz)) * 2 * np.pi,
-            (-np.sin(ry) * np.sin(rz) + np.cos(rx) * np.cos(rz)) * 2 * np.pi,
-        )
-        return np.array(res).T
-
-
-class PSurface(SurfaceFunc):
-    def __init__(self, eccentricity=0.0):
-        self.ecc = eccentricity
-
-    def surface(self, r):
-        rx, ry, rz = (2 * np.pi * r).T
-        return np.cos(rx) + np.cos(ry) + np.cos(rz) + self.ecc
-
-    def gradient(self, r):
-        rx, ry, rz = (2 * np.pi * r).T
-
-        res = (
-            -np.sin(rx) * 2 * np.pi,
-            -np.sin(ry) * 2 * np.pi,
-            -np.sin(rz) * 2 * np.pi,
-        )
-        return np.array(res).T
-
-
-class Sphere(SurfaceFunc):
-    def __init__(self, radius=0.0):
-        self.R = radius
-        assert 0 < radius < 0.5
-
-    def surface(self, x):
-        return np.sum(x**2, axis=1) - self.R**2
-
-    def gradient(self, x):
-        return 2 * x
