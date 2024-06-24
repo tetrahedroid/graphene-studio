@@ -8,7 +8,7 @@ import pairlist as pl
 import yaplotlib as yap
 from cycless import cycles, simplex
 
-from graphenator.quench import quench_particles
+from graphenestudio.quench import quench_particles
 
 
 def firstshell(x: np.ndarray, cell: np.ndarray, rc=None) -> float:

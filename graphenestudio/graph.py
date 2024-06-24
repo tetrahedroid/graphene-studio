@@ -7,7 +7,7 @@ import numpy as np
 import pairlist as pl
 from cycless import cycles, simplex
 
-from graphenator.pack import firstshell
+from graphenestudio.pack import firstshell
 
 
 def to_graph(x: np.ndarray, cell: np.ndarray, bondlen: float = 1.2):

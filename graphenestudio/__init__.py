@@ -6,8 +6,8 @@ import networkx as nx
 import yaplotlib as yap
 from cycless import cycles
 
-import graphenator.pack as pack
-import graphenator.graph as graph
+import graphenestudio.pack as pack
+import graphenestudio.graph as graph
 from gromacs import write_gro
 
 

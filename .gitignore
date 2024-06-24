@@ -4,5 +4,6 @@ Pipfile.lock
 *.ana
 *.png
 *.gro
+*.lock
 Unused/
 __pycache__/
