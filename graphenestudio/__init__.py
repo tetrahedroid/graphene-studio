@@ -132,10 +132,10 @@ def dump_gro(x, cell, g, gro):
 
     Natom = x_scaled.shape[0]
     frame = {
-        "resi_id": np.array([999 for i in range(Natom)]),
+        "resi_id": np.array([1 for i in range(Natom)]),
         "residue": np.array(["GRPH" for i in range(Natom)]),
         "atom": np.array(["C" for i in range(Natom)]),
-        "atom_id": np.array([999 for i in range(Natom)]),
+        "atom_id": np.array([i + 1 for i in range(Natom)]),
         "position": x_scaled,
         "cell": cell_scaled,
     }
