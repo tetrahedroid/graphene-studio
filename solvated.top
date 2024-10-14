@@ -1,0 +1,20 @@
+
+[ defaults ]
+; nbfunc        comb-rule       gen-pairs       fudgeLJ fudgeQQ
+1               3               yes             1     1
+
+#include "oplsaa.ff/ffnonbonded.itp"
+#include "cnt.itp"
+; #include "oplsaa.ff/tip5p.itp"
+#include "oplsaa.ff/tip4p.itp"
+#include "graphene.itp"
+
+[ system ]
+; Name
+solvated graphene in water
+
+[ molecules ]
+; Compound        #mols
+GRPH             1
+; SOL               930
+SOL              2000

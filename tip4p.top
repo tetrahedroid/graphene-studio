@@ -1,0 +1,2 @@
+; only used in solvate command.
+#include "tip4p.itp"

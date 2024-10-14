@@ -1,5 +1,6 @@
 from logging import getLogger
 from typing import Callable
+import itertools as it
 
 import numpy as np
 import networkx as nx
@@ -148,3 +149,136 @@ def dump_gro(x, cell, g, gro):
         hist[len(cycle)] += 1
 
     write_gro(frame, gro, f"{hist[3:]} 3-8 cycles in the graph")
+
+
+def moleculetype_section(mol_name):
+    s = "[ moleculetype ]\n"
+    s += "; Name            nrexcl\n"
+    s += f"{mol_name}                 3\n\n"
+    return s
+
+
+def atoms_section(N):
+    s = "[ atoms ]\n"
+    s += ";   nr       type  resnr residue  atom   cgnr     charge       mass  typeB    chargeB      massB\n"
+    for i in range(N):
+        s += f"{i+1:4}      CJ      1   GRPH      C      {+1:4}       0     12.011\n"
+    return s + "\n"
+
+
+def bonds_section(g):
+    s = "[ bonds ]\n"
+    s += ";  ai    aj funct            c0            c1            c2            c3\n"
+    for i, j in g.edges():
+        s += f"{i+1:5} {j+1:5}    1\n"
+    return s + "\n"
+
+
+def pairs_section(g):
+    s = "[ pairs ]\n"
+    s += ";  ai    aj funct            c0            c1            c2            c3\n"
+    for i in g:
+        nei0 = set([i])
+        nei1 = set(g.neighbors(i))
+        nei2 = set([k for j in nei1 for k in g.neighbors(j)]) - nei1 - nei0
+        nei3 = set([k for j in nei2 for k in g.neighbors(j)]) - nei2 - nei1 - nei0
+        for j in nei3:
+            if i < j:
+                s += f"{i+1:5} {j+1:5}    1\n"
+    return s + "\n"
+
+
+def angles_section(g):
+    s = "[ angles ]\n"
+    s += ";  ai    aj    ak funct            c0            c1            c2            c3\n"
+    for i in g:
+        for j, k in it.combinations(g.neighbors(i), 2):
+            s += f"{j+1:5} {i+1:5} {k+1:5}    1\n"
+    return s + "\n"
+
+
+def generate_top(x: np.ndarray, cell: np.ndarray, g: nx.Graph) -> str:
+    logger = getLogger()
+
+    celli = np.linalg.inv(cell)
+
+    s = moleculetype_section("GRPH")
+    s += atoms_section(len(x))
+    s += bonds_section(g)
+    # s += pairs_section(g)
+    s += angles_section(g)
+    return s
+
+
+def _replicate(x: np.ndarray, cell: np.ndarray, g: nx.Graph, direc: int):
+    # セルの逆行列
+    celli = np.linalg.inv(cell)
+
+    Natom = x.shape[0]
+
+    # セル相対座標
+    r = x @ celli
+
+    # 0-1範囲にする。
+    r -= np.floor(r)
+
+    # 結合を倍にする。
+    newg = nx.Graph()
+    for i, j in g.edges():
+        d = r[j] - r[i]
+        wrap = np.floor(d + 0.5)
+        if wrap[direc] != 0:
+            # i-jはcellをまたいでいる。
+            newg.add_edge(i, j + Natom)
+            newg.add_edge(i + Natom, j)
+        else:
+            newg.add_edge(i, j)
+            newg.add_edge(i + Natom, j + Natom)
+
+    # 座標を倍にする
+    r1 = r.copy()
+    r1[:, direc] += 1
+    newr = np.vstack([r, r1])
+    newr[:, direc] /= 2
+    newcell = cell.copy()
+    newcell[direc, :] *= 2
+
+    # 絶対座標に戻す。
+    newx = newr @ newcell
+    return newx, newcell, newg
+
+
+def replicate_x(x: np.ndarray, cell: np.ndarray, g: nx.Graph):
+    return _replicate(x, cell, g, direc=0)
+
+
+def replicate_y(x: np.ndarray, cell: np.ndarray, g: nx.Graph):
+    return _replicate(x, cell, g, direc=1)
+
+
+def replicate_z(x: np.ndarray, cell: np.ndarray, g: nx.Graph):
+    return _replicate(x, cell, g, direc=2)
+
+
+def extend_z(x: np.ndarray, cell: np.ndarray, g: nx.Graph):
+    # セルの逆行列
+    celli = np.linalg.inv(cell)
+
+    # セル相対座標
+    r = x @ celli
+
+    # 0-1範囲にする。
+    r -= np.floor(r)
+
+    # z方向にセルをまたぐ結合を削る。
+    newg = nx.Graph()
+    for i, j in g.edges():
+        d = r[j] - r[i]
+        wrap = np.floor(d + 0.5)
+        if wrap[2] == 0:
+            newg.add_edge(i, j)
+
+    newcell = cell.copy()
+    newcell[2, :] *= 2
+
+    return x, newcell, newg

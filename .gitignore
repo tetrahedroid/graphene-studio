@@ -7,3 +7,8 @@ Pipfile.lock
 *.lock
 Unused/
 __pycache__/
+graphene.itp
+graphene.gro
+solvated.gro
+solvated.ndx
+mdout.mdp
