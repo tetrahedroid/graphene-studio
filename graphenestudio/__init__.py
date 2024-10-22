@@ -197,7 +197,22 @@ def angles_section(g):
     return s + "\n"
 
 
-def generate_top(x: np.ndarray, cell: np.ndarray, g: nx.Graph) -> str:
+def dihedrals_section(g):
+    s = "[ dihedrals ]\n"
+    s += ";  ai    aj    ak funct            c0            c1            c2            c3\n"
+    for i, j in g.edges():
+        ni = set(g.neighbors(i)) - set([j])
+        nj = set(g.neighbors(j)) - set([i])
+        if len(ni) > 0 and len(nj) > 0:
+            ii = np.random.choice(list(ni), 1)[0]
+            jj = np.random.choice(list(nj), 1)[0]
+            s += f"{ii+1:5} {i+1:5} {j+1:5} {jj+1:5}    3\n"
+    return s + "\n"
+
+
+def generate_top(
+    x: np.ndarray, cell: np.ndarray, g: nx.Graph, generate_dihed_list: bool = False
+) -> str:
     logger = getLogger()
 
     celli = np.linalg.inv(cell)
@@ -207,6 +222,8 @@ def generate_top(x: np.ndarray, cell: np.ndarray, g: nx.Graph) -> str:
     s += bonds_section(g)
     # s += pairs_section(g)
     s += angles_section(g)
+    if generate_dihed_list:
+        s += dihedrals_section(g)
     return s
 
 

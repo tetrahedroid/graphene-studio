@@ -12,3 +12,5 @@ graphene.gro
 solvated.gro
 solvated.ndx
 mdout.mdp
+*_*.itp
+000*
