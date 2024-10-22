@@ -33,4 +33,4 @@ clean:
 	-rm "#"*
 distclean: clean
 	-rm 000*
-	-rm psur*.gro psur*.itp mdout.mdp graphene.gro graphene.itp solvated.gro solvated.ndx tail.gro
+	-rm psur*.gro psur*.itp mdout.mdp graphene.gro graphene.itp solvated.gro solvated.ndx tail.gro diam*.itp diam*.gro
