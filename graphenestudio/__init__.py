@@ -298,4 +298,4 @@ def extend_z(x: np.ndarray, cell: np.ndarray, g: nx.Graph):
     newcell = cell.copy()
     newcell[2, :] *= 2
 
-    return x, newcell, newg
+    return r @ cell, newcell, newg

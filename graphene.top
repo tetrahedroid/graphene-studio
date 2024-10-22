@@ -6,7 +6,8 @@
 
 #include "cnt.itp"
 ; #include "oplsaa.ff/tip5p.itp"
-#include "psurface_100.itp"
+; #include "psurface_100.itp"
+#include "graphene.itp"
 
 [ system ]
 ; Name

@@ -31,5 +31,5 @@ def quench_particles(
     r = r.reshape(-1, 3)
     # r = fmin_cg(func, r_linear).reshape(-1, 3)
 
-    r -= np.floor(r + 0.5)
+    r -= np.floor(r)
     return r
