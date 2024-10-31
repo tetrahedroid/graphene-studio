@@ -9,7 +9,7 @@ from cycless import cycles
 
 import graphenestudio.pack as pack
 import graphenestudio.graph as graph
-from gromacs import write_gro
+from graphenestudio.gromacs import Frame
 
 
 def draw_yaplot(x: np.ndarray, cell: np.ndarray, g: nx.Graph) -> str:
@@ -100,7 +100,7 @@ def graphenate(
             yield triangle_positions, cell, g_adjacency
 
 
-def dump_gro(x, cell, g, gro):
+def dump_gro(x, cell, g, file):
 
     # セルの逆行列
     celli = np.linalg.inv(cell)
@@ -132,14 +132,14 @@ def dump_gro(x, cell, g, gro):
     # 原子の座標を準備する。
 
     Natom = x_scaled.shape[0]
-    frame = {
-        "resi_id": np.array([1 for i in range(Natom)]),
-        "residue": np.array(["GRPH" for i in range(Natom)]),
-        "atom": np.array(["C" for i in range(Natom)]),
-        "atom_id": np.array([i + 1 for i in range(Natom)]),
-        "position": x_scaled,
-        "cell": cell_scaled,
-    }
+    frame = Frame(
+        resi_id=np.array([1 for i in range(Natom)]),
+        residue=np.array(["GRPH" for i in range(Natom)]),
+        atom=np.array(["C" for i in range(Natom)]),
+        atom_id=np.array([i + 1 for i in range(Natom)]),
+        position=x_scaled,
+        cell=cell_scaled,
+    )
 
     # 環を数える
 
@@ -148,7 +148,7 @@ def dump_gro(x, cell, g, gro):
         cycle = list(cycle)
         hist[len(cycle)] += 1
 
-    write_gro(frame, gro, f"{hist[3:]} 3-8 cycles in the graph")
+    frame.write_gro(file, f"{hist[3:]} 3-8 cycles in the graph")
 
 
 def moleculetype_section(mol_name):
