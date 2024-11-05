@@ -9,6 +9,9 @@
 #include "oplsaa.ff/tip4p.itp"
 #include "graphene.itp"
 
+; 以下の行を追加。
+#include "graphene-restraints.itp"
+
 [ system ]
 ; Name
 solvated graphene in water
@@ -17,5 +20,5 @@ solvated graphene in water
 ; Compound        #mols
 GRPH             1
 ; SOL               930
-; SOL              2000
-SOL               476
+; SOL               476
+SOL               474

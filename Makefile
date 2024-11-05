@@ -20,14 +20,13 @@ all:
 	gmx x2top -f $< -o $@ -name cnt -noparam -pbc -ff oplsaa 2> $@.log
 
 
-%-0.gro: %.tpr
+%-0.gro: %.trr
 	prev=`expr $* - 1`; prev=`printf '%05d' $$prev`; echo $$prev; \
 	if [ -e $$prev.part*.trr ] ; \
-		then echo 0 | gmx trjconv -f $$prev.part*.trr -s $*.tpr -o $*-0.tmp.gro; \
+		then echo 0 | gmx trjconv -f $$prev.part*.trr -s $*.tpr -o $*-0.gro; \
 	elif [ -e $*.trr ] ; \
-		then echo 0 | gmx trjconv -f $*.trr -s $*.tpr -o $*-0.tmp.gro; \
+		then echo 0 | gmx trjconv -f $*.trr -s $*.tpr -o $*-0.gro; \
 	fi
-	python3 pbcfix.py < $*-0.tmp.gro > $*-0.gro
 
 clean:
 	-rm "#"*
