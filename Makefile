@@ -28,6 +28,9 @@ all:
 		then echo 0 | gmx trjconv -f $*.trr -s $*.tpr -o $*-0.gro; \
 	fi
 
+%.yap: %.gro
+	analice2 $< -O OW -H HW[12] -f rings[yaplot] > $@
+
 clean:
 	-rm "#"*
 distclean: clean
