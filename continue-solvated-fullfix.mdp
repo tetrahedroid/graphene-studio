@@ -39,7 +39,7 @@ tcoupl                   = v-rescale   ; 温度制御の方法。初期配置か
 nh-chain-length          = 1
 tc_grps                  = System
 tau_t                    = 6         ; 温度調節の時定数。
-ref_t                    = 270.0       ; 系の温度。単位はK。
+ref_t                    = 250.0       ; 系の温度。単位はK。
 
 ; Pressure coupling
 Pcoupl                   = berendsen

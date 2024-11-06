@@ -1,0 +1,6 @@
+
+[atomtypes]
+;name     mass      charge   ptype    sigma        epsilon
+IW     0             0.000       D   0.0           0.0
+OWT4   15.99940      0.000       A   0.31668       0.88211
+HW     1.00800       0.000       A   0.00000E+00   0.00000E+00

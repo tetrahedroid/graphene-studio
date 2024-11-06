@@ -129,18 +129,6 @@ def dump_gro(x, cell, g, file):
     x_scaled = x * CC / Lavg
     cell_scaled = cell * CC / Lavg
 
-    # 原子の座標を準備する。
-
-    Natom = x_scaled.shape[0]
-    frame = Frame(
-        resi_id=np.array([1 for i in range(Natom)]),
-        residue=np.array(["GRPH" for i in range(Natom)]),
-        atom=np.array(["C" for i in range(Natom)]),
-        atom_id=np.array([i + 1 for i in range(Natom)]),
-        position=x_scaled,
-        cell=cell_scaled,
-    )
-
     # 環を数える
 
     hist = [0] * 9
@@ -148,7 +136,20 @@ def dump_gro(x, cell, g, file):
         cycle = list(cycle)
         hist[len(cycle)] += 1
 
-    frame.write_gro(file, f"{hist[3:]} 3-8 cycles in the graph")
+    # 原子の座標を準備する。
+
+    Natom = x_scaled.shape[0]
+    frame = Frame(
+        residue_id=np.array([1 for i in range(Natom)]),
+        residue_name=np.array(["GRPH" for i in range(Natom)]),
+        atom_name=np.array(["C" for i in range(Natom)]),
+        atom_id=np.array([i + 1 for i in range(Natom)]),
+        position=x_scaled,
+        cell=cell_scaled,
+        remark=f"graphenestudio/__init__/dump_gro() {hist[3:]} 3-8 cycles in the graph",
+    )
+
+    frame.write_gro(file)
 
 
 def moleculetype_section(mol_name):
